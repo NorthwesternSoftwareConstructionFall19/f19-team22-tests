@@ -1,2 +1,10 @@
-9
+7
+8
+9 
 10
+"more than 10 objects"
+"seven"
+"ten"
+{name: 4}
+{name: "seven"}
+{name: {name: 4}}

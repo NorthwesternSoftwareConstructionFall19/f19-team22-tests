@@ -1,2 +1,10 @@
-"hi"
-"bye"
+"same line objects" 3 "hi"
+{name: 
+	{name: 
+	"split objects"}}5
+"split line
+
+\n string"
+555
+"string""yyy"
+{name: 7}
