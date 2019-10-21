@@ -1,0 +1,9 @@
+10
+9
+"more than 10 objects" 
+8 7 {name: 4}
+"seven"
+{name: "seven"}
+{name: {name: 4}}
+"ten"
+1

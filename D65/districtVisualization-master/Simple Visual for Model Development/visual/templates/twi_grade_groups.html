@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+
+<!-- Notes
+
+
+
+//School district boundaries/Numbering System
+// 0 - Dawes
+// 1 - Dewey
+// 2 - Kingsley
+// 3 - Lincoln
+// 4 - Lincolnwood
+// 5 - Oakton
+// 6 - Orrington
+// 7 - Walker
+// 8 - Washington
+// 9 - Willard
+// 10 - Bessie Rhodes
+// 11 - MLK
+
+Most buttons can be added to the map using this skeleton:
+
+   <div class='map-overlay-button (put specific button name here)'>
+    	<div class='map-overlay-inner-button'>
+        	<fieldset>
+            	<label>(put actual button name here, the name the user will see)</label>
+            	<button id=" (put a name for the button here, a short one that you can refer to in the file)"></button>
+        	</fieldset>
+    	</div>
+   </div>
+
+=====================================================
+=====================================================
+To change the color of the blocks via mapbox style function calls, use this command:
+
+ map.setPaintProperty("blocks", 'fill-color', (put values here));  Here is an example:
+
+ map.setPaintProperty("blocks", 'fill-color', ["case",
+         ["==", ["number", ['get', 'busedHazard']],
+             300], "transparent",//not in district
+         ["==", ["number", ['get', 'busedDistance']],
+             0], "#fef0d9", //light white
+         ["<", ["number", ['get', 'busedDistance']],
+             1], "#fdcc8a",
+         ["<", ["number", ['get', 'busedDistance']],
+             2], "#fc8d59",
+         ["<", ["number", ['get', 'busedDistance']],
+             3], "#e34a33", //orange
+         /* > 3 */  "#b30000"]);//dark red
+
+Notice that a color appears in this kind of format: a string with numbers and letters, like  "#fef0d9"
+
+Notice that the color values differ for different boolean cases. Go to this link to learn how to write
+these special mapbox expressions which look like Racket code from CS 111: https://docs.mapbox.com/mapbox-gl-js/style-spec/
+
+
+=====================================================
+=====================================================
+JavaScript function syntax:
+
+function function_name( put parameters/arguments/inputs here)
+{
+  put function body code here, JS functions DO NOT NEED return statements
+
+}
+
+
+
+=====================================================
+=====================================================
+Clearing and filling the dynamic legend (the transparent
+box that has color blocks with descriptions
+for each block)
+
+--- This while loop clears the "data" currently inside of the
+legend
+
+while (legend.hasChildNodes()) {
+         legend.removeChild(legend.firstChild);
+     }
+
+--- Replace the strings inside of the layers array with the various descriptions you want for the legend
+and replace the colors array with the corresponding colors for the descriptions
+
+     var layers = ['Zero students', 'One Student', 'Two Students', 'Three Students', 'Greater than Three Students'];
+     var colors = ["#fef0d9", "#fdcc8a", "#fc8d59", "#e34a33", "#b30000"];
+
+--- This for loop adds each color and layer to the legend by creating HTML elements on the go
+
+     for (i = 0; i < layers.length; i++) {
+         var layer = layers[i];
+         var color = colors[i];
+         var item = document.createElement('div');
+         var key = document.createElement('span');
+         key.className = 'legend-key';
+         key.style.backgroundColor = color;
+
+         var value = document.createElement('span');
+         value.innerHTML = layer;
+         item.appendChild(key);
+         item.appendChild(value);
+         legend.appendChild(item);
+     }
+
+
+=====================================================
+=====================================================
+Most hovering drop down lists/menus can be added using
+this skeleton (each menu needs its own set of classes. Look at the css
+ file for any of the pages that has a dropdown menu to see an example of how to do this correctly.
+ It is really just copy and paste):
+
+    <div class="dropdown">
+      <button class="dropbtn"> (put menu title here) </button>
+      <div class="dropdown-content">
+       --You can use the <a> tag for calling JS functions or hyperlinks: <a onclick=" (function name here) ">(button title here)</a>
+        <a onclick=" (function name here) ">(button title here)</a>
+        <a onclick=" (function name here) ">(button title here)</a>
+          and so on...
+      </div>
+    </div>
+
+====
+Feeders for Middle Schools:
+
+Chute: Dawes, Oakton, Walker
+Haven: Kingsley, Lincolnwood, Orrington, Willard
+Nichols: Dewey, Lincoln, Washington
+====
+
+-->
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>D65</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <!-- <script src="../static/mapVisual.js"></script> -->
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" type="text/css" href="../static/twi_grade_groups.css">
+    <!-- CSS information for the map -->
+    <style>
+      body { margin:0; padding:0; }
+      #map { position:absolute; top:40px; bottom:0; width:100%; }
+    </style>
+</head>
+<body>
+
+<!-- HTML -->
+
+<div id='nav_bar'></div>
+<div id="map"></div>
+<div class='map-overlay-legend All' id='legend'> </div>
+<div class="map-overlay-legendTwi" id="legendTwi"></div>
+
+
+
+
+
+    <div class="dropdown">
+      <button class="dropbtn">Navigate</button>
+      <div class="dropdown-content">
+        <a href="http://127.0.0.1:5000/">Home Page</a>
+        <a onclick="pageDescription()">Page Description</a>
+      </div>
+    </div>
+
+    <div class="dropdown2">
+      <button class="dropbtn2">Multi Objective Comparison By...</button>
+      <div class="dropdown2-content">
+        <a onclick="multiObj_Comparison_Metric_Selection('school')">School Assignment</a>
+        <a onclick="multiObj_Comparison_Metric_Selection('busHazard')">Busing for Hazards</a>
+        <a onclick="multiObj_Comparison_Metric_Selection('busDistance')">Busing for Distance</a>
+        <a onclick="multiObj_Comparison_Metric_Selection('race')">Race & Re-Assignment</a>
+      </div>
+    </div>
+
+    <div class="dropdown4">
+      <button class="dropbtn4">Legend Toggles</button>
+      <div class="dropdown4-content">
+        <a onclick="legendToggle()">Show/Hide Color Legend</a>
+      </div>
+    </div>
+
+    <div class='map-overlay-button twiInputs'>
+    	<div class='map-overlay-inner-button'>
+        	<fieldset>
+            	<label>Number of TWI Classes Per Grade (between 0 and 3)</label>
+            	<input class="twiInput" type="number" id="Dawes" value="1" max="3" min="0"> Dawes <br><br>
+                <input class="twiInput" type="number" id="Dewey" value="1" max="3" min="0"> Dawes <br><br>
+                <input class="twiInput" type="number" id="Kingsley" value="1" max="3" min="0"> Kingsley <br><br>
+                <input class="twiInput" type="number" id="Lincoln" value="1" max="3" min="0"> Lincoln <br><br>
+                <input class="twiInput" type="number" id="Lincolnwood" value="1" max="3" min="0"> Lincolnwood <br><br>
+                <input class="twiInput" type="number" id="Oakton" value="1" max="3" min="0"> Oakton <br><br>
+                <input class="twiInput" type="number" id="Orrington" value="1" max="3" min="0"> Orrington <br><br>
+                <input class="twiInput" type="number" id="Walker" value="1" max="3" min="0"> Walker <br><br>
+                <input class="twiInput" type="number" id="Washington" value="1" max="3" min="0"> Washington <br><br>
+                <input class="twiInput" type="number" id="Willard" value="1" max="3" min="0"> Willard <br><br>
+                <input class="twiCheckbox" type="checkbox" id="twiCheckbox" value="1" max="3" min="0">    Ready?
+        	</fieldset>
+    	</div>
+    </div>
+
+    <div class='map-overlay-button gradeInputs'>
+    	<div class='map-overlay-inner-button'>
+        	<fieldset>
+            	<label class="schoolType">School Type Selection</label>
+                <label>Chute</label>
+                Dawes
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="DawesGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="DawesGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="DawesGrade" value="3"> K-5
+                </form>
+                <br>
+                Oakton
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="OaktonGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="OaktonGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="OaktonGrade" value="3"> K-5
+                </form>
+                <br>
+                Walker
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="WalkerGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="WalkerGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="WalkerGrade" value="3"> K-5
+                </form>
+                <br>
+                <label>Haven</label>
+                Kingsley
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="KingsleyGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="KingsleyGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="KingsleyGrade" value="3"> K-5
+                </form>
+                <br>
+                Lincolnwood
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="LincolnwoodGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="LincolnwoodGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="LincolnwoodGrade" value="3"> K-5
+                </form>
+                <br>
+                Orrington
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="OrringtonGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="OrringtonGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="OrringtonGrade" value="3"> K-5
+                </form>
+                <br>
+                Willard
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="WillardGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="WillardGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="WillardGrade" value="3"> K-5
+                </form>
+                <br>
+                <label>Nichols</label>
+                Dewey
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="DeweyGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="DeweyGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="DeweyGrade" value="3"> K-5
+                </form>
+                <br>
+                Lincoln
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="LincolnGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="LincolnGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="LincolnGrade" value="3"> K-5
+                </form>
+                <br>
+                Washington
+                <form>
+            	<input class="gradeCheckbox" type="radio" name="WashingtonGrade" value="1"> K-2
+                <input class="gradeCheckbox" type="radio" name="WashingtonGrade" value="2"> 3-5
+                <input class="gradeCheckbox" type="radio" name="WashingtonGrade" value="3"> K-5
+                </form>
+                <br>
+                <input class="gradeCheckbox" type="checkbox" name="gradesCheckbox" value="1"> Ready?
+        	</fieldset>
+    	</div>
+    </div>
+
+
+</body>
+</html>
+
+
+<script type="text/javascript">
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Displaying the map
+
+mapboxgl.accessToken = 'pk.eyJ1IjoiZXJpbmJydW5zIiwiYSI6ImNqajV3MG51bjI0MWkzcG1tZXZycjdyZWcifQ.-X9WJp4KZ6VEGrkDQI3A_w';
+var map = new mapboxgl.Map(
+{
+container: 'map', // container id
+style: 'mapbox://styles/mapbox/light-v9', // stylesheet location
+center: [-87.6877, 42.0451], // starting position [lng, lat]
+zoom: 12.7// starting zoom
+});
+
+var blocks = { "type": "geojson",
+               "data": "./static/blocks.geojson"};
+
+var blockLabels = { "type": "geojson",
+                            "data": "./static/blockLabels.geojson"};
+
+var schools = { "type": "geojson",
+                            "data": "./static/schools.geojson"};
+
+map.on('load', function() {
+    map.addSource("blockLabels", blockLabels);
+    map.addSource("blocks", blocks);
+    map.addSource("schools", schools);
+
+    //adds schools to map
+    map.addLayer({"id": "schools",
+                "type": "symbol",
+                "source": "schools",
+                "layout": { "icon-image": "{icon}-11",
+                            "icon-allow-overlap": true,
+                            "text-field": "{title}",
+                            "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+                            "text-offset": [0, 0.6],
+                            "text-anchor": "top"}
+    });
+
+    //adds blocks to map
+    map.addLayer({
+        "id": "blocks",
+        "type": "fill",
+        "source": "blocks",
+        "layout": {},
+        "paint": {
+             "fill-color": "#86F",
+             "fill-opacity": 0.7
+
+        }
+    });
+
+});
+
+
+
+
+
+legendOff();
+
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Functions for the legend
+function legendOn()
+{
+    var legendObj = document.getElementById('legend');
+    legendObj.style.display = "block";
+}
+function legendOff()
+{
+    var legendObj = document.getElementById('legend');
+    legendObj.style.display = "none";
+}
+
+function  legendToggle()
+{
+    var legendObj = document.getElementById('legend');
+    if (legendObj.style.display === "none")
+        legendObj.style.display = "block";
+    else
+        legendObj.style.display = "none";
+}
+
+
+function pageDescription()
+{
+    window.confirm('To be added soon...');
+}
+
+
+//Run Model
+$('#optimizationButton').on('click', function(){
+            
+            var blocksAssigned = $('#blocksAssigned').val();
+            var travelDistance = $('#travelDistance').val();
+            var excessStudents = $('#excessStudents').val();
+            var studentsBussed = $('#studentsBussed').val();
+            var yearlyBusPerSchool = $('#yearlyBusPerSchool').val();
+            var titleOneEligibleSchools = $('#titleOneEligibleSchools').val();
+
+            //var contiguity = $('contiguity').val();
+            // if($('#contiguity').prop("checked") == true)
+            // {
+            //   console.log("is checked")
+            //   contiguity = 1; 
+            // }
+            //e.preventDefault();
+            console.log("clicked");
+            
+            if ( $('input[name="contiguity"]').is(':checked') ) {
+                var contiguity = 1; 
+            }
+            else{
+                var contiguity = 0; 
+            }
+             $.ajax({
+                url: 'http://127.0.0.1:5000/square/',
+                data: {'blocksAssigned': blocksAssigned,
+                       'travelDistance': travelDistance,
+                       'excessStudents': excessStudents,
+                       'studentsBussed': studentsBussed,
+                       'yearlyBusPerSchool': yearlyBusPerSchool,
+                       'titleOneEligibleSchools': titleOneEligibleSchools,
+                       'contiguity': contiguity},
+                method: 'POST',
+                success: function() {
+                    $('#blocksAssigned').val('');
+                    $('#travelDistance').val('');
+                    $('#excessStudents').val('');
+                    $('#studentsBussed').val('');
+                    $('#yearlyBusPerSchool').val('');
+                    $('#titleOneEligibleSchools').val('');
+                    $('#myCheckbox').prop('checked', false);
+                    console.log("success");
+                }
+            });
+        });
+
+
+let twiLabel = document.createElement('label');
+twiLabel.innerHTML = 'Total Amount of TWI Programs: 10';
+let twiLegend = document.getElementById('legendTwi');
+twiLegend.appendChild(twiLabel);
+
+let schoolNames = ['Dawes', 'Dewey', 'Kingsley', 'Lincoln',
+                   'Lincolnwood','Oakton', 'Orrington', 'Walker',
+                   'Washington', 'Willard'];
+
+
+for (let index = 0; index < schoolNames.length; index++) {
+    document.getElementById(schoolNames[index]).addEventListener('input', function () {
+        twiLegendModify();
+    });
+
+}
+
+
+function twiLegendModify() {
+    while(twiLegend.hasChildNodes())
+    {
+        twiLegend.removeChild(twiLegend.firstChild);
+    }
+    let twiLabel = document.createElement('label');
+    let totalTWI = parseInt(document.getElementById('Dawes').value, 10) +
+        parseInt(document.getElementById('Dewey').value, 10) +
+        parseInt(document.getElementById('Kingsley').value, 10) +
+        parseInt(document.getElementById('Lincoln').value, 10) +
+        parseInt(document.getElementById('Lincolnwood').value, 10) +
+        parseInt(document.getElementById('Oakton').value, 10) +
+        parseInt(document.getElementById('Orrington').value, 10) +
+        parseInt(document.getElementById('Walker').value, 10) +
+        parseInt(document.getElementById('Washington').value, 10) +
+        parseInt(document.getElementById('Willard').value, 10);
+    twiLabel.innerHTML = 'Total Amount of TWI Programs: ' + totalTWI.toString();
+    twiLegend.appendChild(twiLabel);
+}
+
+
+
+
+
+
+
+
+
+
+</script>
+
+ 

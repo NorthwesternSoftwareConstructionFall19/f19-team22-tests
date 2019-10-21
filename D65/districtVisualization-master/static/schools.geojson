@@ -1,0 +1,147 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+     
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.70054,
+                    42.026
+                ]
+            },
+            "properties": {
+                "title": "Dawes",
+                "id": 2.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.691322,
+                    42.046003
+                ]
+            },
+            "properties": {
+                "title": "Dewey",
+                "id": 3.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.695486,
+                    42.060207
+                ]
+            },
+            "properties": {
+                "title": "Kingsley",
+                "id": 4.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.675571,
+                    42.034599
+                ]
+            },
+            "properties": {
+                "title": "Lincoln",
+                "id": 5.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.708882,
+                    42.060931
+                ]
+            },
+            "properties": {
+                "title": "Lincolnwood",
+                "id": 6.0
+            }
+        },
+
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.686592,
+                    42.02625
+                ]
+            },
+            "properties": {
+                "title": "Oakton",
+                "id": 8.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.679817,
+                    42.065686
+                ]
+            },
+            "properties": {
+                "title": "Orrington",
+                "id": 9.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.718911,
+                    42.047731
+                ]
+            },
+            "properties": {
+                "title": "Walker",
+                "id": 10.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.693499,
+                    42.034379
+                ]
+            },
+            "properties": {
+                "title": "Washington",
+                "id": 11.0
+            }
+        },
+        {
+            "type": "Feature",
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -87.716821,
+                    42.067031
+                ]
+            },
+            "properties": {
+                "title": "Willard",
+                "id": 12.0
+            }
+        }
+    ]
+}

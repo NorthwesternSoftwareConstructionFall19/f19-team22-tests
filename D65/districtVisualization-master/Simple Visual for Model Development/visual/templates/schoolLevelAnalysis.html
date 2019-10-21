@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<!-- Notes
+
+This page represents an in-depth analysis of Willard's data; it explore the effect of an optimization model result
+on various blocks related to Willard. For example, it highlights blocks based off of their assignments in three different
+ways: the block was assigned to Willard before and after running the model, the block wasn't assigned to Willard before
+the model but became assigned to it after running the model, and the block was assigned to Willard before the model but
+became assigned to somewhere else after running the model. This page explores demographics for each of these different
+assignment scenarios. For example, it will display a population density by grades for the blocks that were assigned to
+Willard before and after running the model
+
+
+
+//School district boundaries/Numbering System
+// 0 - Dawes done
+// 1 - Dewey done
+// 2 - Kingsley done
+// 3 - Lincoln done
+// 4 - Lincolnwood done
+// 5 - Oakton done
+// 6 - Orrington done
+// 7 - Walker done
+// 8 - Washington done
+// 9 - Willard done
+// 10 - Bessie Rhodes done
+// 11 - MLK done
+
+Most buttons can be added to the map using this skeleton:
+
+   <div class='map-overlay-button (put specific button name here)'>
+    	<div class='map-overlay-inner-button'>
+        	<fieldset>
+            	<label>(put actual button name here, the name the user will see)</label>
+            	<button id=" (put a name for the button here, a short one that you can refer to in the file)"></button>
+        	</fieldset>
+    	</div>
+   </div>
+
+=====================================================
+=====================================================
+To change the color of the blocks via mapbox style function calls, use this command:
+
+ map.setPaintProperty("blocks", 'fill-color', (put values here));  Here is an example:
+
+ map.setPaintProperty("blocks", 'fill-color', ["case",
+         ["==", ["number", ['get', 'busedHazard']],
+             300], "transparent",//not in district
+         ["==", ["number", ['get', 'busedDistance']],
+             0], "#fef0d9", //light white
+         ["<", ["number", ['get', 'busedDistance']],
+             1], "#fdcc8a",
+         ["<", ["number", ['get', 'busedDistance']],
+             2], "#fc8d59",
+         ["<", ["number", ['get', 'busedDistance']],
+             3], "#e34a33", //orange
+         /* > 3 */  "#b30000"]);//dark red
+
+Notice that a color appears in this kind of format: a string with numbers and letters, like  "#fef0d9"
+
+Notice that the color values differ for different boolean cases. Go to this link to learn how to write
+these kind of special mapbox expressions which look like Racket code from CS 111: https://docs.mapbox.com/mapbox-gl-js/style-spec/
+
+
+=====================================================
+=====================================================
+JavaScript function syntax:
+
+function function_name( put parameters/arguments/inputs here)
+{
+  put function body code here, JS functions DO NOT NEED return statements
+
+}
+
+
+
+=====================================================
+=====================================================
+Clearing and filling the dynamic legend (the kind of
+transparent box that has color blocks with descriptions
+for each one)
+
+--- This while loop clears the "data" currently inside of the
+legend
+
+while (legend.hasChildNodes()) {
+         legend.removeChild(legend.firstChild);
+     }
+
+--- Replace the strings inside of the layers array with the various descriptions you want for the legend
+and replace the colors array with the corresponding colors for the descriptions
+
+     var layers = ['Zero students', 'One Student', 'Two Students', 'Three Students', 'Greater than Three Students'];
+     var colors = ["#fef0d9", "#fdcc8a", "#fc8d59", "#e34a33", "#b30000"];
+
+--- This for loop adds each color and layer to the legend by creating HTML elements on the go
+
+     for (i = 0; i < layers.length; i++) {
+         var layer = layers[i];
+         var color = colors[i];
+         var item = document.createElement('div');
+         var key = document.createElement('span');
+         key.className = 'legend-key';
+         key.style.backgroundColor = color;
+
+         var value = document.createElement('span');
+         value.innerHTML = layer;
+         item.appendChild(key);
+         item.appendChild(value);
+         legend.appendChild(item);
+     }
+
+
+=====================================================
+=====================================================
+Most hovering drop down lists/menus can be added using
+this skeleton (each menu needs its own set of classes. Look at the css
+ file for any of the pages that has a dropdown menu to see an example of how to do this correctly.
+ It is really just copy and paste):
+
+    <div class="dropdown">
+      <button class="dropbtn"> (put menu title here) </button>
+      <div class="dropdown-content">
+       --You can use the <a> tag for calling JS functions or hyperlinks <a onclick=" (function name here) ">(button title here)</a>
+        <a onclick=" (function name here) ">(button title here)</a>
+        <a onclick=" (function name here) ">(button title here)</a>
+          and so on...
+      </div>
+    </div>
+
+-->
+
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>D65</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.js'></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <!-- <script src="../static/mapVisual.js"></script> -->
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.46.0/mapbox-gl.css' rel='stylesheet' />
+    <link rel="stylesheet" type="text/css" href="../static/generalSchool.css">
+<!-- CSS information for the map -->
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:40px; bottom:0; width:100%; }
+    </style>
+</head>
+<body>
+
+<!-- HTML -->
+
+<div id='map'></div>
+
+
+    <!-- The following elements represent drop-down menus for various purposes-->
+<div class="dropdown">
+  <button class="dropbtn">Navigate</button>
+  <div class="dropdown-content">
+    <a href="http://127.0.0.1:5000/">Home Page</a>
+    <a onclick="pageDescription()">Page Description</a>
+    <a href="http://127.0.0.1:5000/Schools">Back to the Schools Home Page</a>
+  </div>
+</div>
+
+
+<div class="dropdown1">
+  <button class="dropbtn1">General Data Densities</button>
+  <div class="dropdown1-content">
+    <a onclick="plainMap('pre')">Pre Model {{schoolName}}</a>
+    <a onclick="regularPost()">Post Model {{schoolName}}</a>
+    <a onclick="genGrades('pre')">Grades</a>
+    <a onclick="racialGroups('pre')">Race</a>
+    <a onclick="frl('pre')">Free/Reduced Lunch</a>
+    <a onclick="twi('pre')">TWI</a>
+  </div>
+</div>
+
+<div class="dropdown2">
+  <button class="dropbtn2">Post Model: Same Assignment</button>
+  <div class="dropdown2-content">
+    <a onclick="plainMap('same')">Hide Population Density</a>
+    <a onclick="genGrades('same')">Grades</a>
+    <a onclick="racialGroups('same')">Race</a>
+    <a onclick="frl('same')">Free/Reduced Lunch</a>
+    <a onclick="twi('same')">TWI</a>
+  </div>
+</div>
+
+<div class="dropdown3">
+  <button class="dropbtn3">Post Model: Newly Assigned</button>
+  <div class="dropdown3-content">
+    <a onclick="plainMap('new')">Hide Population Density</a>
+    <a onclick="genGrades('new')">Grades</a>
+    <a onclick="racialGroups('new')">Race</a>
+    <a onclick="frl('new')">Free/Reduced Lunch</a>
+    <a onclick="twi('new')">TWI</a>
+  </div>
+</div>
+
+<div class="dropdown4">
+  <button class="dropbtn4">Post Model: Reassigned</button>
+  <div class="dropdown4-content">
+    <a onclick="plainMap('re')">Hide Population Density</a>
+    <a onclick="genGrades('re')">Grades</a>
+    <a onclick="racialGroups('re')">Race</a>
+    <a onclick="frl('re')">Free/Reduced Lunch</a>
+    <a onclick="twi('re')">TWI</a>
+  </div>
+</div>
+
+
+<div class="dropdown5">
+  <button class="dropbtn5">Legend Toggles</button>
+  <div class="dropdown5-content">
+    <a onclick="legendToggle()">Show/Hide Color Legend</a>
+    <a onclick="optimizationButtonToggle()">Show/Hide Optimization Form</a>
+  </div>
+</div>
+
+
+<!-- ///////////////////////////////////////////////////////////////////////////////////////////////////////// -->
+
+<div class='map-overlay-legend All' id='legend'> </div>
+
+<!-- This form represents the input box for the optimization model -->
+   <form method = "post" id='paramInput' class="map-overlay optimizationButton">
+      Maximum % of blocks reassigned (1-100)<br>
+      <input type="text" id="blocksAssigned" >
+      <br>
+
+      Objective scaling factor: average student travel distance (km) (>= 0) <br>
+      <input type="text" id="travelDistance">
+
+      Objective scaling factor: expected yearly # of excess students per school (>=0)<br>
+      <input type="text" id="excessStudents">
+
+      Objective scaling factor: expected yearly # of students bussed (>=0)<br>
+      <input type="text" id="studentsBussed">
+
+        Objective scaling factor: expected yearly # of busses used per school (>= 0)<br>
+      <input type="text" id="yearlyBusPerSchool">
+
+        Objective scaling factor: # of Title 1 eligible schools (>=0)<br>
+      <input type="text" id="titleOneEligibleSchools">
+
+      Require Contiguity?
+      <input type="checkbox" name="contiguity" id='myCheckbox'>
+
+      <input type="button" value="Run Optimization" id="optimizationButton">
+    </form>
+<div id='nav_bar'></div>
+</body>
+</html>
+
+<script type="text/javascript">
+    //display the map
+mapboxgl.accessToken = 'pk.eyJ1IjoiZXJpbmJydW5zIiwiYSI6ImNqajV3MG51bjI0MWkzcG1tZXZycjdyZWcifQ.-X9WJp4KZ6VEGrkDQI3A_w';
+var map = new mapboxgl.Map(
+{
+container: 'map', // container id
+style: 'mapbox://styles/mapbox/light-v9', // stylesheet location
+center: [-87.6877, 42.0451], // starting position [lng, lat]
+zoom: 12.7// starting zoom
+});
+
+//Variables to store the number and name of the school, to avoid a lot of typing
+var schoolNum = {{ schoolNum }};
+var schoolName = '{{ schoolName }}';
+
+
+
+var blocks = { "type": "geojson",
+               "data": "./static/blocks.geojson"};
+
+var blockLabels = { "type": "geojson",
+                            "data": "./static/blockLabels.geojson"};
+
+var schools = { "type": "geojson",
+                            "data": "./static/schools.geojson"};
+
+map.on('load', function() {
+    map.addSource("blockLabels", blockLabels);
+    map.addSource("blocks", blocks);
+    map.addSource("schools", schools);
+
+
+    // //adds labels to map
+  /*  map.addLayer({"id": "blockLabels",
+                 "type": "symbol",
+                 "source": "blockLabels",
+                 "layout": { "icon-image": "{icon}-11",
+                             "icon-allow-overlap": true,
+                             "text-field": "{title}",
+                             "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+                             "text-offset": [0, 0.6],
+                             "text-anchor": "top"}
+     }); */
+
+    //adds schools to map
+    map.addLayer({
+        "id": "schools",
+        "type": "symbol",
+        "source": "schools",
+        "layout": {
+            "icon-image": "{icon}-11",
+            "icon-allow-overlap": true,
+            "text-field": "{title}",
+            "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+            "text-offset": [0, 0.6],
+            "text-anchor": "top"
+        }
+    });
+
+    //adds blocks to map
+    map.addLayer({
+        "id": "blocks",
+        "type": "fill",
+        "source": "blocks",
+        "layout": {},
+        "paint": {
+            "fill-color": "#7f8163",
+            "fill-opacity": 0.7
+        }
+    });
+
+// Defaults to showing the map with currently assigned
+// Willard blocks as blue, all others as gray
+    plainMap('pre');
+    legendOn();
+    optimizationButtonOn();
+
+
+});
+
+
+//Adding a kind-of-sort-of event listener, so that
+//when a user inputs numbers into the input box,
+//the appropiate functions are called
+$('#optimizationButton').on('click', function(){
+
+            var blocksAssigned = $('#blocksAssigned').val();
+            var travelDistance = $('#travelDistance').val();
+            var excessStudents = $('#excessStudents').val();
+            var studentsBussed = $('#studentsBussed').val();
+            var yearlyBusPerSchool = $('#yearlyBusPerSchool').val();
+            var titleOneEligibleSchools = $('#titleOneEligibleSchools').val();
+
+            //var contiguity = $('contiguity').val();
+            // if($('#contiguity').prop("checked") == true)
+            // {
+            //   console.log("is checked")
+            //   contiguity = 1;
+            // }
+            //e.preventDefault();
+            console.log("clicked");
+
+            if ( $('input[name="contiguity"]').is(':checked') ) {
+                var contiguity = 1;
+            }
+            else{
+                var contiguity = 0;
+            }
+             $.ajax({
+                url: 'http://127.0.0.1:5000/square/',
+                data: {'blocksAssigned': blocksAssigned,
+                       'travelDistance': travelDistance,
+                       'excessStudents': excessStudents,
+                       'studentsBussed': studentsBussed,
+                       'yearlyBusPerSchool': yearlyBusPerSchool,
+                       'titleOneEligibleSchools': titleOneEligibleSchools,
+                       'contiguity': contiguity},
+                method: 'POST',
+                success: function() {
+                    $('#blocksAssigned').val('');
+                    $('#travelDistance').val('');
+                    $('#excessStudents').val('');
+                    $('#studentsBussed').val('');
+                    $('#yearlyBusPerSchool').val('');
+                    $('#titleOneEligibleSchools').val('');
+                    $('#myCheckbox').prop('checked', false);
+                    console.log("success");
+                }
+            });
+        });
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Functions for the legend, to display or hide it
+function legendOn()
+{
+    var legendObj = document.getElementById('legend');
+    legendObj.style.display = "block";
+}
+
+function  legendToggle()
+{
+    var legendObj = document.getElementById('legend');
+    if (legendObj.style.display === "none")
+        legendObj.style.display = "block";
+    else
+        legendObj.style.display = "none";
+}
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Functions for the optimization model button, to display it or hide it
+function optimizationButtonOn()
+{
+    var optimizationButtonObj = document.getElementById('optimizationButton');
+    optimizationButtonObj.style.display = "block";
+
+    var paramInputObj = document.getElementById('paramInput');
+    paramInputObj.style.display = "block";
+}
+
+function  optimizationButtonToggle()
+{
+    var optimizationButtonObj = document.getElementById('optimizationButton');
+    var paramInputObj = document.getElementById('paramInput');
+
+    ///////////////////////////////////////////////////////
+
+    if (optimizationButtonObj.style.display === "none" &&  paramInputObj.style.display === "none") {
+        optimizationButtonObj.style.display = "block";
+        paramInputObj.style.display = "block";
+    }
+    else {
+        optimizationButtonObj.style.display = "none";
+        paramInputObj.style.display = "none";
+    }
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Function for coloring the map without population densities
+
+function plainMap(mapMode)
+{
+    var legendKey = "";
+    if (mapMode === 'pre')
+    {
+         map.setPaintProperty("blocks", 'fill-color', ["case", ["==", ["number", ['get', 'currentSchool']],
+                                                                  schoolNum],
+                                                          "#19E2D1",
+                                                           ['==', ['number', ['get', 'currentSchool']],
+                                                                  300],
+                                                           "transparent",
+                                                           "#7f8163"]);
+         legendKey = "Currently Assigned to " + schoolName;
+    }
+
+    if (mapMode === 'same')
+    {
+         map.setPaintProperty("blocks", 'fill-color', ["case",
+            ['==', ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                           schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                           schoolNum]],
+            "#19E2D1",
+             ['any', ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['!=', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "#135245",
+             "rgba(255,12,12,0.48)"]);
+
+         legendKey = "Assigned to " + schoolName+ " Pre and Post Model";
+    }
+
+    if (mapMode === 'new')
+    {
+         map.setPaintProperty("blocks", 'fill-color', ["case",
+            ['==', ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ["!=", ["number", ['get', 'currentSchool']],
+                           schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                           schoolNum]],
+            "#19E2D1",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['!=', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "#135245",
+               "rgba(255,12,12,0.48)"]);
+
+         legendKey = "Assigned to " + schoolName + " Post Model but not Pre";
+    }
+
+    if (mapMode === 're')
+    {
+         map.setPaintProperty("blocks", 'fill-color', ["case",
+            ['==', ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                           schoolNum],
+                    ["!=", ['number', ['get', 'newSchool']],
+                           schoolNum]],
+            "#19E2D1",
+            ['any', ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "#135245",
+               "rgba(255,12,12,0.48)"]);
+
+         legendKey = "Assigned to " + schoolName + " Pre Model but not Post";
+    }
+
+        while (legend.hasChildNodes()) {
+              legend.removeChild(legend.firstChild);
+                }
+
+        if (mapMode !== 'pre') {
+            var layers = [legendKey, 'The Rest of ' + schoolName];
+            var colors = ["#19E2D1", "#135245"];
+        }
+
+        if (mapMode === 'pre')
+        {
+            var layers = [legendKey, 'The Rest of D65'];
+            var colors = ["#19E2D1", "#7f8163"];
+        }
+        var label = document.createElement('label');
+        label.innerHTML = 'Display of ' + schoolName + ' w/o Population Densities';
+        legend.appendChild(label);
+
+        for (i = 0; i < layers.length; i++) {
+          var layer = layers[i];
+          var color = colors[i];
+          var item = document.createElement('div');
+          var key = document.createElement('span');
+          key.className = 'legend-key';
+          key.style.backgroundColor = color;
+
+          var value = document.createElement('span');
+          value.innerHTML = layer;
+          item.appendChild(key);
+          item.appendChild(value);
+          legend.appendChild(item);
+        }
+}
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Colors the blocks based on the school assignments post model
+function regularPost()
+{
+    // Coloring newly assigned blocks, currently and newly assigned blocks,
+    // and currently but not newly assigned blocks
+    map.setPaintProperty("blocks", 'fill-color', ["case", ["all", ["==", ["number", ['get', 'newSchool']],
+                                                                         schoolNum],
+                                                                   ["==", ["number", ['get', 'currentSchool']],
+                                                                         schoolNum]],
+                                                          "#19E2D1",
+                                                          ["all", ["!=",  ["number", ['get', 'currentSchool']],
+                                                                           schoolNum],
+                                                                   ["==", ["number", ['get', 'newSchool']],
+                                                                           schoolNum]],
+                                                          "#2051e2",
+                                                          ["all", ["==",  ["number", ['get', 'currentSchool']],
+                                                                           schoolNum],
+                                                                   ["!=", ["number", ['get', 'newSchool']],
+                                                                           schoolNum]],
+                                                           "#ff150c",
+                                                           ["==", ['number', ['get', 'currentSchool']],
+                                                                  300],
+                                                           "transparent",
+        /*not at all assigned to this school whatsoever */"#7f8163"]);
+
+
+
+     //Clearing the legend
+     while (legend.hasChildNodes()) {
+          legend.removeChild(legend.firstChild);
+            }
+
+        var layers = ['Assigned to ' + schoolName + ' Pre and Post Model',
+                      'NOT Assigned to ' + schoolName + ' Pre Model but Assigned Post Model',
+                      'Assigned to ' + schoolName + ' Pre Model but NOT Post Model',
+                      'The Rest of D65'];
+        var colors = ["#19E2D1", "#2051e2", "#ff150c", "#7f8163"];
+
+        var label = document.createElement('label');
+        label.innerHTML = 'Display of ' + schoolName + ' Post Model';
+        legend.appendChild(label);
+
+        for (i = 0; i < layers.length; i++) {
+          var layer = layers[i];
+          var color = colors[i];
+          var item = document.createElement('div');
+          var key = document.createElement('span');
+          key.className = 'legend-key';
+          key.style.backgroundColor = color;
+
+          var value = document.createElement('span');
+          value.innerHTML = layer;
+          item.appendChild(key);
+          item.appendChild(value);
+          legend.appendChild(item);
+        }
+}
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+// Button for this school's page description
+function pageDescription() {
+   alert("This page represents an in-depth analysis of " +schoolName + " 's data; it explore the effect of an optimization model result\n" +
+       "on various blocks related to " + schoolName + ". For example, it highlights blocks based off of their assignments in three different\n" +
+       "ways: the block was assigned to " + schoolName + " before and after running the model, the block wasn't assigned to " + schoolName + " before\n" +
+       "the model but became assigned to it after running the model, and the block was assigned to " + schoolName + " before the model but\n" +
+       "became assigned to somewhere else after running the model. This page explores demographics for each of these different \n" +
+       "assignment scenarios. For example, it will display a population density by grades for the blocks that were assigned to \n" +
+        schoolName + " before and after running the model\n"+
+       "Clicking this button will return the blocks to its original arrangement.");
+
+   plainMap('pre');
+   legendOn();
+
+}
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Function to create the population density map for each grade
+function genGrades(givenMode)
+{
+    var label = document.createElement('label');
+    if (givenMode === 'pre') {
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+            ['==', ['number', ['get', 'currentSchool']],
+                    300],
+            "transparent",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                            schoolNum],
+                    [">=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                                  0.5]],
+
+            "#fc1515",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                            schoolNum],
+                    [">=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                            0.5]],
+
+
+            "#ffdb06",
+
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                schoolNum],
+                [">=", ["/", ["number", ["get", '6-8']],
+                    ["+", ["number", ["get", '3-5']],
+                        ["number", ["get", 'k-2']],
+                        ["number", ["get", '6-8']]]],
+                    0.5]],
+            "#39ff10",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                schoolNum],
+                ["!=", ["/", ["number", ["get", 'k-2']],
+                    ["+", ["number", ["get", '3-5']],
+                        ["number", ["get", 'k-2']],
+                        ["number", ["get", '6-8']]]],
+                    0.5],
+                ["!=", ["/", ["number", ["get", '3-5']],
+                    ["+", ["number", ["get", '3-5']],
+                        ["number", ["get", 'k-2']],
+                        ["number", ["get", '6-8']]]],
+                    0.5],
+                ["!=", ["/", ["number", ["get", '6-8']],
+                    ["+", ["number", ["get", '3-5']],
+                        ["number", ["get", 'k-2']],
+                        ["number", ["get", '6-8']]]],
+                    0.5]],
+            "#7f8163",
+            "rgba(46,232,197,0.38)"
+        ]);
+        label.innerHTML = 'Population Density by Grades Pre Model';
+    }
+
+
+    if (givenMode === 'same'){
+
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+
+            ["==", ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+
+            "#fc1515",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                            0.5]],
+            "#ffdb06",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#39ff10",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    ["!=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#2c2e19",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['!=', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "rgba(71,12,253,0.85)",
+            "rgba(46,232,197,0.38)"
+        ]);
+
+        label.innerHTML = 'Population Density by Grades Post Model: Still ' + schoolName;
+    }
+
+    if (givenMode === 'new'){
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+
+            ["==", ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ["!=", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    9],
+                    [">=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+
+            "#fc1515",
+            ["all", ["!=", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                            0.5]],
+            "#ffdb06",
+            ["all", ["!=", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#39ff10",
+            ["all", ["!=", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["==", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    ["!=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#7f8163",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['!=', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "rgba(71,12,253,0.85)",
+            "rgba(46,232,197,0.38)"
+        ]);
+
+        label.innerHTML = 'Population Density by Grades Post Model: Became ' + schoolName;
+    }
+
+    if (givenMode === 're'){
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["!=", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+
+            "#fc1515",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["!=", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                            0.5]],
+            "#ffdb06",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["!=", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    [">=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#39ff10",
+            ["all", ["==", ["number", ['get', 'currentSchool']],
+                    schoolNum],
+                    ["!=", ['number', ['get', 'newSchool']],
+                    schoolNum],
+                    ["!=", ["/", ["number", ["get", 'k-2']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '3-5']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5],
+                    ["!=", ["/", ["number", ["get", '6-8']],
+                                 ["+", ["number", ["get", '3-5']],
+                                       ["number", ["get", 'k-2']],
+                                       ["number", ["get", '6-8']]]],
+                           0.5]],
+            "#7f8163",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]],
+                    ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                   schoolNum],
+                            ['==', ['number', ['get', 'newSchool']],
+                                   schoolNum]]],
+            "rgba(71,12,253,0.85)",
+            "rgba(46,232,197,0.38)"
+        ]);
+
+        label.innerHTML = 'Population Density by Grades Post Model: Assigned Elsewhere';
+    }
+
+
+    while (legend.hasChildNodes()) {
+          legend.removeChild(legend.firstChild);
+            }
+
+    if (givenMode !== 'pre') {
+        var layers = ['K-2 Majority', '3-5 Majority', '6-8 Majority', 'No Clear Majority', 'The Rest of ' + schoolName];
+        var colors = ["#fc1515", "#ffdb06", "#39ff10", "#7f8163", "rgba(71,12,253,0.85)"];
+    }
+    if (givenMode === 'pre') {
+        var layers = ['K-2 Majority', '3-5 Majority', '6-8 Majority', 'No Clear Majority', 'The Rest of D65'];
+        var colors = ["#fc1515", "#ffdb06", "#39ff10", "#7f8163", "rgba(71,12,253,0.85)"];
+    }
+        legend.appendChild(label);
+
+    for (i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      var color = colors[i];
+      var item = document.createElement('div');
+      var key = document.createElement('span');
+      key.className = 'legend-key';
+      key.style.backgroundColor = color;
+
+      var value = document.createElement('span');
+      value.innerHTML = layer;
+      item.appendChild(key);
+      item.appendChild(value);
+      legend.appendChild(item);
+    }
+}
+
+
+// Function that displays a population density by race/ethnic groups
+function racialGroups(givenMode)
+{
+    var label = document.createElement('label');
+    if (givenMode === 'pre')
+    {
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+         ["==", ['number', ['get', 'currentSchool']],
+                300],
+         "transparent",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#43fc0d",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'CaucasianNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#0cebfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'HispanicNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#ca0dfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'OtherRaceNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#fc092e",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'MultiRacialNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#f37600",
+        ["all", ["==", ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ["!=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                ["!=", ["/", ["number", ['get', 'CaucasianNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'HispanicNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'OtherRaceNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'MultiRacialNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5]],
+                "#7f8163",
+                "rgba(255,243,143,0.98)"
+
+    ]);
+        label.innerHTML = 'Population Density by Race Pre Model';
+    }
+
+
+    if (givenMode === 'same')
+    {
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+        ["==", ['number', ['get', 'currentSchool']],
+                300],
+         "transparent",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#43fc0d",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'CaucasianNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#0cebfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'HispanicNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#ca0dfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'OtherRaceNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#fc092e",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'MultiRacialNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#f37600",
+        ["all", ["==", ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                ["!=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                ["!=", ["/", ["number", ['get', 'CaucasianNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'HispanicNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'OtherRaceNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'MultiRacialNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5]],
+                "#7f8163",
+                ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['!=', ['number', ['get', 'newSchool']],
+                                       schoolNum]],
+                        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['==', ['number', ['get', 'newSchool']],
+                                       schoolNum]]],
+                "rgb(245,238,11)",
+                "rgba(231,229,27,0.44)"
+
+    ]);
+        label.innerHTML = 'Population Density by Race Post Model: Still ' + schoolName;
+    }
+
+    if (givenMode === 'new')
+    {
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+        ["==", ['number', ['get', 'currentSchool']],
+                300],
+         "transparent",
+        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#43fc0d",
+        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'CaucasianNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#0cebfc",
+        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'HispanicNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#ca0dfc",
+        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'OtherRaceNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#fc092e",
+        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'MultiRacialNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#f37600",
+        ["all", ["!=", ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                ["!=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                ["!=", ["/", ["number", ['get', 'CaucasianNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'HispanicNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'OtherRaceNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'MultiRacialNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5]],
+                "#7f8163",
+                ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['!=', ['number', ['get', 'newSchool']],
+                                       schoolNum]],
+                        ['all', ['==', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['==', ['number', ['get', 'newSchool']],
+                                       schoolNum]]],
+                "rgb(245,238,11)",
+                "rgba(231,229,27,0.44)"
+
+    ]);
+        label.innerHTML = 'Population Density by Race Post Model: Became ' + schoolName;
+    }
+
+    if (givenMode === 're')
+    {
+        map.setPaintProperty("blocks", 'fill-color', ["case",
+        ["==", ['number', ['get', 'currentSchool']],
+                300],
+         "transparent",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#43fc0d",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'CaucasianNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#0cebfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'HispanicNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#ca0dfc",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'OtherRaceNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#fc092e",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ["/", ["number", ['get', 'MultiRacialNum']],
+                    ["+", ["number", ['get', 'CaucasianNum']],
+                        ["number", ['get', 'HispanicNum']],
+                        ["number", ['get', 'OtherRaceNum']],
+                        ["number", ['get', 'MultiRacialNum']],
+                        ["number", ['get', 'AfroAmericanNum']]]],
+                    0.5]],
+        "#f37600",
+        ["all", ["==", ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                ["!=", ["/", ["number", ['get', 'AfroAmericanNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                ["!=", ["/", ["number", ['get', 'CaucasianNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'HispanicNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'OtherRaceNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5],
+                 ["!=", ["/", ["number", ['get', 'MultiRacialNum']],
+                              ["+", ["number", ['get', 'CaucasianNum']],
+                                    ["number", ['get', 'HispanicNum']],
+                                    ["number", ['get', 'OtherRaceNum']],
+                                    ["number", ['get', 'MultiRacialNum']],
+                                    ["number", ['get', 'AfroAmericanNum']]]],
+                 0.5]],
+                "#7f8163",
+                ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['==', ['number', ['get', 'newSchool']],
+                                       schoolNum]],
+                        ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                       schoolNum],
+                                ['==', ['number', ['get', 'newSchool']],
+                                       schoolNum]]],
+                "rgb(245,238,11)",
+                "rgba(231,229,27,0.44)"
+
+    ]);
+        label.innerHTML = 'Population Density by Race Post Model: Assigned Elsewhere';
+    }
+
+
+
+
+    while (legend.hasChildNodes()) {
+      legend.removeChild(legend.firstChild);
+        }
+
+    if (givenMode !== 'pre') {
+        var layers = ['African American Majority', 'Caucasian Majority', 'Hispanic Majority',
+            'Other Race Majority', 'Multi-Racial Majority', 'No Clear Majority', 'The Rest of ' + schoolName];
+        var colors = ["#43fc0d", "#0cebfc", "#ca0dfc", "#fc092e", "#f37600", "#7f8163", "rgb(245,238,11)"];
+    }
+
+    if (givenMode === 'pre') {
+        var layers = ['African American Majority', 'Caucasian Majority', 'Hispanic Majority',
+            'Other Race Majority', 'Multi-Racial Majority', 'No Clear Majority', 'The Rest of D65'];
+        var colors = ["#43fc0d", "#0cebfc", "#ca0dfc", "#fc092e", "#f37600", "#7f8163", "rgba(231,229,27,0.44)"];
+    }
+    legend.appendChild(label);
+
+    for (i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      var color = colors[i];
+      var item = document.createElement('div');
+      var key = document.createElement('span');
+      key.className = 'legend-key';
+      key.style.backgroundColor = color;
+
+      var value = document.createElement('span');
+      value.innerHTML = layer;
+      item.appendChild(key);
+      item.appendChild(value);
+      legend.appendChild(item);
+    }
+
+
+
+}
+
+
+//Function that displays a population density by Free/Reduced Lunch
+function frl(givenMode) {
+    var label = document.createElement('label');
+    if (givenMode === 'pre') {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['>=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#ffdb06",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['!=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#2cd70c",
+            "rgba(209,42,0,0.54)"
+        ]);
+        label.innerHTML = 'Population Density by Free/Reduced Lunch Pre Model';
+    }
+    if (givenMode === 'same') {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                    300],
+             "transparent",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['>=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#ffdb06",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['!=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#2cd70c",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['!=', ['number', ['get', 'newSchool']],
+                                           schoolNum]],
+                            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]]],
+            "rgb(255,51,0)",
+            "rgba(209,42,0,0.54)"
+        ]);
+        label.innerHTML = 'Population Density by Free/Reduced Lunch Post Model: Still ' + schoolName;
+    }
+
+    if (givenMode === 'new') {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                    300],
+             "transparent",
+            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['>=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#ffdb06",
+            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['!=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#2cd70c",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['!=', ['number', ['get', 'newSchool']],
+                                           schoolNum]],
+                            ['all', ['==', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]]],
+            "rgb(255,51,0)",
+            "rgba(209,42,0,0.54)"
+        ]);
+        label.innerHTML = 'Population Density by Free/Reduced Lunch Post Model: Became ' + schoolName;
+    }
+
+    if (givenMode === 're') {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                    300],
+             "transparent",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['>=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#ffdb06",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ['!=', ['/', ['number', ['get', 'frlNum']],
+                    ['number', ['get', 'totalStudentsNum']]],
+                    0.5]],
+            "#2cd70c",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]],
+                            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]]],
+            "rgb(255,51,0)",
+            "rgba(209,42,0,0.54)"
+        ]);
+        label.innerHTML = 'Population Density by Free/Reduced Lunch Post Model: Assigned Elsewhere';
+    }
+
+    while (legend.hasChildNodes()) {
+        legend.removeChild(legend.firstChild);
+    }
+
+    if (givenMode !== 'pre') {
+        var layers = ['Majority', 'No Majority', 'The Rest of ' + schoolName];
+        var colors = ["#ffdb06", "#2cd70c", "rgb(255,51,0)"];
+    }
+    if (givenMode === 'pre') {
+        var layers = ['Majority', 'No Majority', 'The Rest of D65'];
+        var colors = ["#ffdb06", "#2cd70c", "rgb(255,51,0)"];
+    }
+
+    legend.appendChild(label);
+
+    for (i = 0; i < layers.length; i++) {
+        var layer = layers[i];
+        var color = colors[i];
+        var item = document.createElement('div');
+        var key = document.createElement('span');
+        key.className = 'legend-key';
+        key.style.backgroundColor = color;
+
+        var value = document.createElement('span');
+        value.innerHTML = layer;
+        item.appendChild(key);
+        item.appendChild(value);
+        legend.appendChild(item);
+    }
+}
+
+
+//Function that displays a population density by TWI
+function twi(givenMode)
+{
+    var label = document.createElement('label');
+    if (givenMode === 'pre')
+    {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ['==', ['number', ['get', 'currentSchool']],
+                   300],
+            "transparent",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiEnglish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+             "#0809db",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiOther']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#fa0eaa",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiSpanish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#ffe464",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    ["!=", ['/', ['number', ['get', 'twiEnglish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5],
+                    ["!=", ['/', ['number', ['get', 'twiOther']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5],
+                    ["!=", ['/', ['number', ['get', 'twiSpanish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#7f7f7f",
+            "rgba(49,255,13,0.53)"
+        ]);
+
+        label.innerHTML = 'Population Density by TWI Pre Model';
+    }
+
+    if (givenMode === 'same')
+    {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                        300],
+                 "transparent",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    ['==', ['number', ['get', 'newSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiEnglish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+             "#0809db",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    ['==', ['number', ['get', 'newSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiOther']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#fa0eaa",
+            ["all", ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    ['==', ['number', ['get', 'newSchool']],
+                           schoolNum],
+                    [">=", ['/', ['number', ['get', 'twiSpanish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#ffe464",
+            ['all', ['==', ['number', ['get', 'currentSchool']],
+                           schoolNum],
+                    ['==', ['number', ['get', 'newSchool']],
+                           schoolNum],
+                    ["!=", ['/', ['number', ['get', 'twiEnglish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5],
+                    ["!=", ['/', ['number', ['get', 'twiOther']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5],
+                    ["!=", ['/', ['number', ['get', 'twiSpanish']],
+                                 ['+', ['number', ['get', 'twiEnglish']],
+                                       ['number', ['get', 'twiOther']],
+                                       ['number', ['get', 'twiSpanish']]]],
+                           0.5]],
+            "#7f7f7f",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                               schoolNum],
+                                        ['!=', ['number', ['get', 'newSchool']],
+                                               schoolNum]],
+                                ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                               schoolNum],
+                                        ['==', ['number', ['get', 'newSchool']],
+                                               schoolNum]]],
+            "rgb(6,207,14)",
+            "rgba(49,255,13,0.53)"
+        ]);
+        label.innerHTML = 'Population Density by TWI Post Model: Still ' + schoolName;
+    }
+
+    if (givenMode === 'new') {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+            ["==", ['number', ['get', 'currentSchool']],
+                        300],
+                 "transparent",
+            ["all", ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                [">=", ['/', ['number', ['get', 'twiEnglish']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5]],
+            "#0809db",
+            ["all", ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                [">=", ['/', ['number', ['get', 'twiOther']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5]],
+            "#fa0eaa",
+            ["all", ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                [">=", ['/', ['number', ['get', 'twiSpanish']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5]],
+            "#ffe464",
+            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                schoolNum],
+                ['==', ['number', ['get', 'newSchool']],
+                    schoolNum],
+                ["!=", ['/', ['number', ['get', 'twiEnglish']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5],
+                ["!=", ['/', ['number', ['get', 'twiOther']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5],
+                ["!=", ['/', ['number', ['get', 'twiSpanish']],
+                    ['+', ['number', ['get', 'twiEnglish']],
+                        ['number', ['get', 'twiOther']],
+                        ['number', ['get', 'twiSpanish']]]],
+                    0.5]],
+            "#7f7f7f",
+            ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                               schoolNum],
+                                        ['!=', ['number', ['get', 'newSchool']],
+                                               schoolNum]],
+                                ['all', ['==', ['number', ['get', 'currentSchool']],
+                                               schoolNum],
+                                        ['==', ['number', ['get', 'newSchool']],
+                                               schoolNum]]],
+            "rgb(6,207,14)",
+            "rgba(49,255,13,0.53)"
+        ]);
+        label.innerHTML = 'Population Density by TWI Post Model: Became ' + schoolName;
+    }
+    if (givenMode === 're')
+    {
+        map.setPaintProperty('blocks', 'fill-color', ["case",
+        ["==", ['number', ['get', 'currentSchool']],
+                    300],
+             "transparent",
+        ["all", ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ['/', ['number', ['get', 'twiEnglish']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5]],
+         "#0809db",
+        ["all", ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ['/', ['number', ['get', 'twiOther']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5]],
+        "#fa0eaa",
+        ["all", ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                [">=", ['/', ['number', ['get', 'twiSpanish']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5]],
+        "#ffe464",
+        ['all', ['==', ['number', ['get', 'currentSchool']],
+                       schoolNum],
+                ['!=', ['number', ['get', 'newSchool']],
+                       schoolNum],
+                ["!=", ['/', ['number', ['get', 'twiEnglish']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5],
+                ["!=", ['/', ['number', ['get', 'twiOther']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5],
+                ["!=", ['/', ['number', ['get', 'twiSpanish']],
+                             ['+', ['number', ['get', 'twiEnglish']],
+                                   ['number', ['get', 'twiOther']],
+                                   ['number', ['get', 'twiSpanish']]]],
+                       0.5]],
+        "#7f7f7f",
+        ['any', ['all', ['==', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]],
+                            ['all', ['!=', ['number', ['get', 'currentSchool']],
+                                           schoolNum],
+                                    ['==', ['number', ['get', 'newSchool']],
+                                           schoolNum]]],
+        "rgb(6,207,14)",
+        "rgba(49,255,13,0.53)"
+    ]);
+        label.innerHTML = 'Population Density by TWI Post Model: Assigned Elsewhere';
+    }
+
+
+
+    while (legend.hasChildNodes()) {
+         legend.removeChild(legend.firstChild);
+     }
+
+    if (givenMode === 'pre') {
+
+        var layers = ['TWI English Majority', 'TWI Other Majority',
+            'TWI Spanish Majority', 'No Clear Majority', 'The Rest of D65'];
+        var colors = ["#0809db", "#fa0eaa", "#ffe464", "#7f7f7f", "rgba(49,255,13,0.53)"];
+    }
+    if (givenMode !== 'pre') {
+
+        var layers = ['TWI English Majority', 'TWI Other Majority',
+            'TWI Spanish Majority', 'No Clear Majority', 'The Rest of ' + schoolName];
+        var colors = ["#0809db", "#fa0eaa", "#ffe464", "#7f7f7f", "rgb(6,207,14)"];
+    }
+
+    legend.appendChild(label);
+
+     for (i = 0; i < layers.length; i++) {
+         var layer = layers[i];
+         var color = colors[i];
+         var item = document.createElement('div');
+         var key = document.createElement('span');
+         key.className = 'legend-key';
+         key.style.backgroundColor = color;
+
+         var value = document.createElement('span');
+         value.innerHTML = layer;
+         item.appendChild(key);
+         item.appendChild(value);
+         legend.appendChild(item);
+     }
+
+}
+
+
+
+
+
+</script>
+
+
+

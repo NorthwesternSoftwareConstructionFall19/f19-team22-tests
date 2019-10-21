@@ -1,0 +1,10 @@
+1
+2
+5
+9998
+" "
+"9999"
+"strings that look like other things"
+"{name: 5}"
+"{name: not an object}"
+{name: 5}

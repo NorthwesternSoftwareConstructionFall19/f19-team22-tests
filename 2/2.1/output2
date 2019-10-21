@@ -1,0 +1,14 @@
+3
+5
+555
+"hi"
+"same line objects"
+"split line
+
+\n string"
+"string"
+"yyy"
+{name: 7}
+{name: 
+	{name: 
+	"split objects"}}
